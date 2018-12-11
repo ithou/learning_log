@@ -1,0 +1,16 @@
+{% extends 'learning_logs/base.html' %}
+
+{% block content %}
+    {% if form.errors %}
+        <p>Your name and password </p>
+    {% endif %}
+
+    <form action="{% url 'users:login'%}" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button name="submit">log in</button>
+        {# 隐藏元素，实参vlaue旨在重定向到某个地方——这里是主页 #}
+        <input type="hidden" name="next" value="{% url 'learning_logs:index' %}">
+    </form>
+
+{% endblock content %}
