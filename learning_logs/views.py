@@ -1,10 +1,13 @@
 from django.shortcuts import render
 
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, Http404
 from django.urls import reverse
 
 from .models import Topic, Entry
 from .forms import TopicForm, EntryForm
+
+from django.contrib.auth.decorators import login_required  # 装饰器(decorators)限制访问
+
 
 
 # Create your views here.
@@ -12,7 +15,7 @@ from .forms import TopicForm, EntryForm
 
 
 def index(request):
-    """学习笔记的主页"""
+    """学习笔记的主页，不做登录限制"""
 
     """ 当URL请求与app_name/urls定义的模式匹配时，Django将调用views.py中的index()函数
     再将请求对象传递给视图函数
@@ -21,21 +24,30 @@ def index(request):
     return render(request, 'learning_logs/index.html')  # 注意这里是index.html（有后缀）
 
 
+@login_required
 def topics(request):  # 第一个需要使用数据（库）的网页
     """显示所有主题的网页"""
-    topics = Topic.objects.order_by('date_added')  # 查询数据——请求提供Topic对象，并对date_added排序
+    topics = Topic.objects.filter(owner=request.user).order_by('date_added')  # 查询数据——请求提供Topic对象，并对date_added排序
     context = {'topics': topics}
     return render(request, 'learning_logs/topics.html', context)
 
 
+@login_required
 def topic(request, topic_id):
     """显示单个主题及其所有条目"""
+
     topic = Topic.objects.get(id=topic_id)
+
+    # 保护 topic页面
+    if topic.owner != request.user:
+        raise Http404
+
     entries = topic.entry_set.order_by('-date_added')
     context = {'topic': topic, 'entries': entries}
     return render(request, 'learning_logs/topic.html', context)
 
 
+@login_required
 def new_topic(request):
     """添加新主题"""
     if request.method != 'POST':
@@ -47,13 +59,16 @@ def new_topic(request):
 
         # 检查确定是否是有效的数据
         if form.is_valid():
-            form.save()  # 若有效，则写入数据库
+            new_topic = form.save(commit=False)  # 若有效，则写入数据库
+            new_topic.owner = request.user
+            new_topic.save()
             return HttpResponseRedirect(reverse('learning_logs:topics'))  # 重定向至所有主题的/topics页面
 
     context = {'form': form}
     return render(request, 'learning_logs/new_topic.html', context)
 
 
+@login_required
 def new_entry(request, topic_id):
     """在特定的主题中添加项目"""
     topic = Topic.objects.get(id=topic_id)
@@ -67,16 +82,24 @@ def new_entry(request, topic_id):
             new_entry = form.save(commit=False)  # 不将其保存到数据库中
             new_entry.topic = topic
 
-        new_entry.save()
-        return HttpResponseRedirect(reverse('learning_logs:topic', args=[topic_id]))
+            # 保护页面new_entry，只有所有者才可以对其修改
+            new_entry.topic.owner = request.user
+
+            new_entry.save()
+            return HttpResponseRedirect(reverse('learning_logs:topic', args=[topic_id]))
 
     context = {'topic': topic, 'form': form}
     return render(request, 'learning_logs/new_entry.html', context)
 
 
+@login_required
 def edit_entry(request, entry_id):
     entry = Entry.objects.get(id=entry_id)
     topic = entry.topic  # ?
+
+    # 保护edit页面
+    if topic.owner != request.user:
+        raise Http404
 
     if request.method != 'POST':
         # 初次请求，使用当前条目填充表单

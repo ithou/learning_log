@@ -1,21 +1,22 @@
-{% extends 'learning_logs/base.html' %}
-
+{% extends "learning_logs/base.html" %}
+{% block header %}
+<h2>
+    主题
+    <small class="pull-right">
+        <a href="{% url 'learning_logs:new_topic' %}">添加新主题</a>
+    </small>
+</h2>
+{% endblock header %}
 {% block content %}
-
-    <p>Topics</p>
-
-    <ul>
-      {% for topic in topics %}
-          <li>
-              <a href="{% url 'learning_logs:topic' topic.id %}">{{ topic }}</a>
-          </li>
-      {% empty %}
-          <li>None</li>
-      {% endfor %}
-
-
-    </ul>
-
-    <a href="{% url 'learning_logs:new_topic' %}">Add new topic:</a>
-
-{% endblock content %}
+<ul>
+    {% for entry in topics %}
+        <li>
+            <h3>
+                <a href="{% url 'learning_logs:topic' entry.id %}">{{entry}}</a>
+            </h3>
+        </li>
+    {% empty %}<!--当topics为空时-->
+        <li>No topics have been added yet.</li>
+    {% endfor %}
+</ul>
+{% endblock content%}
