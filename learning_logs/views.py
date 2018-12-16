@@ -73,6 +73,9 @@ def new_entry(request, topic_id):
     """在特定的主题中添加项目"""
     topic = Topic.objects.get(id=topic_id)
 
+    if topic.owner != request.user:
+        raise Http404
+
     if request.method != 'POST':  # 这里我少写了method，出错了半天找不出来
         form = EntryForm()
     else:
